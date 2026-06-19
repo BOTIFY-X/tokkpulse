@@ -1,9 +1,9 @@
-# ═══════════════════════════════════════════════════════════════════
+# ═════════════════════════════════════════════════════════════════[...]
   # TokPulse — Railway-ready Dockerfile
   # All env vars are baked in EXCEPT:
   #   DATABASE_URL  → Connect Railway PostgreSQL plugin (auto-injected)
   #   OPENAI_API_KEY → Add in Railway Variables dashboard
-  # ═══════════════════════════════════════════════════════════════════
+  # ════════════════════════════════════════════════════════════════…
 
   # ── Stage 1: Builder ────────────────────────────────────────────────
   FROM node:24-alpine AS builder
@@ -24,7 +24,7 @@
   COPY artifacts/tokpulse/ ./artifacts/tokpulse/
   COPY scripts/ ./scripts/
 
-  RUN pnpm install --frozen-lockfile
+  RUN pnpm install --frozen-lockfile --ignore-scripts
   RUN pnpm run typecheck:libs
   RUN pnpm --filter @workspace/tokpulse run build
   RUN pnpm --filter @workspace/api-server run build
@@ -53,4 +53,3 @@
     CMD wget -qO- http://localhost:8080/api/healthz || exit 1
 
   CMD ["node", "--enable-source-maps", "/app/dist/index.mjs"]
-  
