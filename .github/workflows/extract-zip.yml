@@ -1,1 +1,41 @@
+name: Extract Archives (ZIP and TAR)
 
+on:
+  push:
+    paths:
+      - '**.zip'
+      - '**.tar'
+      - '**.tar.gz'
+      - '**.tgz'
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Extract ZIP and TAR files
+        run: |
+          # Extract ZIP files
+          find . -name "*.zip" -type f | while read zipfile; do
+            dir="${zipfile%.zip}"
+            mkdir -p "$dir"
+            unzip -o "$zipfile" -d "$dir"
+            rm "$zipfile"
+          done
+          
+          # Extract TAR files
+          find . -name "*.tar" -o -name "*.tar.gz" -o -name "*.tgz" | while read tarfile; do
+            dir="${tarfile%%.*}"
+            mkdir -p "$dir"
+            tar -xf "$tarfile" -C "$dir"
+            rm "$tarfile"
+          done
+      
+      - name: Commit extracted files
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -m "Extract archive files" || echo "No changes to commit"
+          git push
