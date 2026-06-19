@@ -12,13 +12,12 @@ jobs:
   extract:
     runs-on: ubuntu-latest
     permissions:
-  contents: write
+      contents: write
     steps:
       - uses: actions/checkout@v3
       
       - name: Extract ZIP and TAR files
         run: |
-          # Extract ZIP files
           find . -name "*.zip" -type f | while read zipfile; do
             dir="${zipfile%.zip}"
             if [ -n "$dir" ]; then
@@ -28,7 +27,6 @@ jobs:
             fi
           done
           
-          # Extract TAR files (including .tar.gz)
           find . -type f \( -name "*.tar.gz" -o -name "*.tgz" \) | while read tarfile; do
             dir="${tarfile%.*.*}"
             if [ -n "$dir" ]; then
@@ -38,7 +36,6 @@ jobs:
             fi
           done
           
-          # Extract plain TAR files
           find . -name "*.tar" -type f ! -name "*.tar.gz" | while read tarfile; do
             dir="${tarfile%.tar}"
             if [ -n "$dir" ]; then
@@ -53,5 +50,9 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add .
-          git commit -m "Extract archive files" || echo "No changes to commit"
-          git push
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Extract archive files"
+            git push
+          fi
