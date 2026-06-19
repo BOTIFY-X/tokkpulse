@@ -19,17 +19,31 @@ jobs:
           # Extract ZIP files
           find . -name "*.zip" -type f | while read zipfile; do
             dir="${zipfile%.zip}"
-            mkdir -p "$dir"
-            unzip -o "$zipfile" -d "$dir"
-            rm "$zipfile"
+            if [ -n "$dir" ]; then
+              mkdir -p "$dir"
+              unzip -o "$zipfile" -d "$dir"
+              rm "$zipfile"
+            fi
           done
           
-          # Extract TAR files
-          find . -name "*.tar" -o -name "*.tar.gz" -o -name "*.tgz" | while read tarfile; do
-            dir="${tarfile%%.*}"
-            mkdir -p "$dir"
-            tar -xf "$tarfile" -C "$dir"
-            rm "$tarfile"
+          # Extract TAR files (including .tar.gz)
+          find . -type f \( -name "*.tar.gz" -o -name "*.tgz" \) | while read tarfile; do
+            dir="${tarfile%.*.*}"
+            if [ -n "$dir" ]; then
+              mkdir -p "$dir"
+              tar -xzf "$tarfile" -C "$dir"
+              rm "$tarfile"
+            fi
+          done
+          
+          # Extract plain TAR files
+          find . -name "*.tar" -type f ! -name "*.tar.gz" | while read tarfile; do
+            dir="${tarfile%.tar}"
+            if [ -n "$dir" ]; then
+              mkdir -p "$dir"
+              tar -xf "$tarfile" -C "$dir"
+              rm "$tarfile"
+            fi
           done
       
       - name: Commit extracted files
