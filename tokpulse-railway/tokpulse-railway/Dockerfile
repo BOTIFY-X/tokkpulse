@@ -6,7 +6,7 @@
   # ════════════════════════════════════════════════════════════════…
 
   # ── Stage 1: Builder ────────────────────────────────────────────────
-  FROM node:24-alpine AS builder
+  FROM node:24-slim AS builder
   WORKDIR /app
 
   ENV VITE_CLERK_PUBLISHABLE_KEY=true
@@ -30,7 +30,7 @@
   RUN pnpm --filter @workspace/api-server run build
 
   # ── Stage 2: Production runtime ─────────────────────────────────────
-  FROM node:24-alpine AS production
+  FROM node:24-slim AS production
   WORKDIR /app
 
   COPY --from=builder /app/artifacts/api-server/dist ./dist
