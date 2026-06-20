@@ -1,5 +1,5 @@
 import path from "path";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 import express, { type Express, type Request, type Response } from "express";
 import cors from "cors";
@@ -60,27 +60,29 @@ app.use(
 
 app.use("/api", router);
 
-// ── Production static file serving (Railway deployed builds) ──────────────────
-// Express serves the pre-built Vite SPA that was copied into dist/public during
-// the Docker build. index.html is served specially so we can inject runtime env
-// vars (CLERK_PUBLISHABLE_KEY, etc.) that are known only at container start time
-// — NOT at Docker build time when Vite compiled the JS bundle.
-if (process.env.NODE_ENV === "production") {
-  const __dirnameProd = path.dirname(fileURLToPath(import.meta.url));
-  const staticDir = path.join(__dirnameProd, "public");
+// ── Static file serving for the built Vite SPA ────────────────────────────────
+// We check whether dist/public actually exists on disk rather than relying on
+// NODE_ENV — Railway may override NODE_ENV independently of the Docker build.
+// In local dev the directory won't exist, so this block is safely skipped.
+const __dirnameCurrent = path.dirname(fileURLToPath(import.meta.url));
+const staticDir = path.join(__dirnameCurrent, "public");
 
-  // Cache the template once at startup — placeholders get replaced per-request.
-  const indexHtmlTemplate = readFileSync(path.join(staticDir, "index.html"), "utf-8");
+if (existsSync(staticDir)) {
+  const indexHtmlPath = path.join(staticDir, "index.html");
+  // Cache the template once at startup — placeholders replaced per-request.
+  const indexHtmlTemplate = readFileSync(indexHtmlPath, "utf-8");
 
-  // Serve all static assets (JS/CSS/images) directly — skip index.html here.
+  logger.info({ staticDir }, "Serving static SPA from dist/public");
+
+  // Serve JS/CSS/images directly — skip index.html (handled below).
   app.use(express.static(staticDir, { index: false }));
 
-  // For every HTML navigation request, inject runtime env vars and serve the SPA.
+  // For every navigation request, inject runtime env vars and serve the SPA.
   app.get("/*splat", (req: Request, res: Response) => {
     const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY ?? "";
 
-    // Compute the Clerk proxy URL from the incoming request so it matches the
-    // domain Railway actually assigned — this can't be known at build time.
+    // Compute Clerk proxy URL from the live request host so it always matches
+    // the domain Railway assigned — this cannot be known at Docker build time.
     const protocol = (
       Array.isArray(req.headers["x-forwarded-proto"])
         ? req.headers["x-forwarded-proto"][0]
