@@ -1,0 +1,837 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: TokPulse API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: users
+    description: User management
+  - name: tiktok
+    description: TikTok account operations
+  - name: analytics
+    description: Analytics data
+  - name: payments
+    description: Payment & subscription operations
+  - name: ai
+    description: AI content assistant
+  - name: admin
+    description: Admin operations
+  - name: notifications
+    description: Push notification subscriptions
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /users/me:
+    get:
+      operationId: getMe
+      tags: [users]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+    patch:
+      operationId: updateMe
+      tags: [users]
+      summary: Update current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserProfileUpdate"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  /tiktok/connect:
+    post:
+      operationId: connectTikTok
+      tags: [tiktok]
+      summary: Connect a TikTok account via OAuth code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TikTokConnectInput"
+      responses:
+        "200":
+          description: TikTok connected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TikTokAccount"
+
+  /tiktok/disconnect:
+    post:
+      operationId: disconnectTikTok
+      tags: [tiktok]
+      summary: Disconnect TikTok account
+      responses:
+        "200":
+          description: Disconnected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /tiktok/account:
+    get:
+      operationId: getTikTokAccount
+      tags: [tiktok]
+      summary: Get connected TikTok account info
+      responses:
+        "200":
+          description: TikTok account info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TikTokAccount"
+        "404":
+          description: No TikTok account connected
+
+  /tiktok/oauth-url:
+    get:
+      operationId: getTikTokOAuthUrl
+      tags: [tiktok]
+      summary: Get TikTok OAuth URL
+      responses:
+        "200":
+          description: OAuth URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthUrlResponse"
+
+  /analytics/overview:
+    get:
+      operationId: getAnalyticsOverview
+      tags: [analytics]
+      summary: Get analytics overview (premium only)
+      responses:
+        "200":
+          description: Analytics overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsOverview"
+        "403":
+          description: Premium required
+
+  /analytics/videos:
+    get:
+      operationId: getVideoAnalytics
+      tags: [analytics]
+      summary: Get per-video analytics (premium only)
+      responses:
+        "200":
+          description: Video analytics list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VideoAnalytics"
+        "403":
+          description: Premium required
+
+  /analytics/growth:
+    get:
+      operationId: getGrowthChart
+      tags: [analytics]
+      summary: Get follower/engagement growth chart data (premium only)
+      parameters:
+        - in: query
+          name: period
+          schema:
+            type: string
+            enum: [7d, 30d, 90d]
+          required: false
+      responses:
+        "200":
+          description: Growth chart data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GrowthDataPoint"
+
+  /analytics/top-videos:
+    get:
+      operationId: getTopVideos
+      tags: [analytics]
+      summary: Get top performing videos (premium only)
+      responses:
+        "200":
+          description: Top videos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VideoAnalytics"
+
+  /analytics/refresh:
+    post:
+      operationId: refreshAnalytics
+      tags: [analytics]
+      summary: Manually refresh analytics data
+      responses:
+        "200":
+          description: Refreshed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /payments/initiate:
+    post:
+      operationId: initiatePayment
+      tags: [payments]
+      summary: Initiate a premium subscription payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentInitInput"
+      responses:
+        "201":
+          description: Payment request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentRequest"
+
+  /payments/upload-proof:
+    post:
+      operationId: uploadPaymentProof
+      tags: [payments]
+      summary: Upload payment proof screenshot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentProofInput"
+      responses:
+        "200":
+          description: Proof submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentRequest"
+
+  /payments/my-subscription:
+    get:
+      operationId: getMySubscription
+      tags: [payments]
+      summary: Get current subscription status
+      responses:
+        "200":
+          description: Subscription info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+
+  /ai/generate:
+    post:
+      operationId: generateContent
+      tags: [ai]
+      summary: Generate content ideas, captions or hashtags (premium only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiGenerateInput"
+      responses:
+        "200":
+          description: Generated content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiGenerateResponse"
+        "403":
+          description: Premium required
+
+  /ai/chat:
+    post:
+      operationId: chatWithAssistant
+      tags: [ai]
+      summary: Chat with AI content assistant (premium only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiChatInput"
+      responses:
+        "200":
+          description: AI response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiChatResponse"
+        "403":
+          description: Premium required
+
+  /notifications/subscribe:
+    post:
+      operationId: subscribePushNotifications
+      tags: [notifications]
+      summary: Subscribe to push notifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushSubscriptionInput"
+      responses:
+        "200":
+          description: Subscribed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /notifications/unsubscribe:
+    post:
+      operationId: unsubscribePushNotifications
+      tags: [notifications]
+      summary: Unsubscribe from push notifications
+      responses:
+        "200":
+          description: Unsubscribed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /admin/login:
+    post:
+      operationId: adminLogin
+      tags: [admin]
+      summary: Admin login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLoginInput"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAuthResult"
+        "401":
+          description: Invalid credentials
+
+  /admin/payments/pending:
+    get:
+      operationId: getAdminPendingPayments
+      tags: [admin]
+      summary: Get all pending payment proofs
+      responses:
+        "200":
+          description: Pending payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminPaymentDetail"
+
+  /admin/payments/{paymentId}/approve:
+    post:
+      operationId: approvePayment
+      tags: [admin]
+      summary: Approve a payment and grant premium access
+      parameters:
+        - in: path
+          name: paymentId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Payment approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /admin/payments/{paymentId}/reject:
+    post:
+      operationId: rejectPayment
+      tags: [admin]
+      summary: Reject a payment
+      parameters:
+        - in: path
+          name: paymentId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Payment rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /admin/users:
+    get:
+      operationId: getAdminUsers
+      tags: [admin]
+      summary: Get all users
+      responses:
+        "200":
+          description: Users list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminUserDetail"
+
+  /admin/users/{userId}/toggle-premium:
+    post:
+      operationId: toggleUserPremium
+      tags: [admin]
+      summary: Manually grant or revoke premium access
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TogglePremiumInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Get platform-level stats
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+    OAuthUrlResponse:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+
+    UserProfile:
+      type: object
+      required: [id, clerkId, email, plan, createdAt]
+      properties:
+        id:
+          type: integer
+        clerkId:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: ["string", "null"]
+        country:
+          type: ["string", "null"]
+        currency:
+          type: ["string", "null"]
+        niche:
+          type: ["string", "null"]
+        plan:
+          type: string
+          enum: [free, premium, grace]
+        premiumExpiresAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    UserProfileUpdate:
+      type: object
+      properties:
+        displayName:
+          type: string
+        country:
+          type: string
+        currency:
+          type: string
+          enum: [NGN, USD]
+        niche:
+          type: string
+
+    TikTokAccount:
+      type: object
+      required: [id, username, displayName, followerCount, followingCount, videoCount]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+        avatarUrl:
+          type: ["string", "null"]
+        bio:
+          type: ["string", "null"]
+        followerCount:
+          type: integer
+        followingCount:
+          type: integer
+        videoCount:
+          type: integer
+        lastSyncedAt:
+          type: ["string", "null"]
+
+    TikTokConnectInput:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+        redirectUri:
+          type: string
+
+    AnalyticsOverview:
+      type: object
+      required: [totalLikes, totalComments, totalShares, totalViews, totalVideos, avgEngagementRate, lastUpdatedAt]
+      properties:
+        totalLikes:
+          type: integer
+        totalComments:
+          type: integer
+        totalShares:
+          type: integer
+        totalViews:
+          type: integer
+        totalVideos:
+          type: integer
+        avgEngagementRate:
+          type: number
+        followerCount:
+          type: integer
+        lastUpdatedAt:
+          type: ["string", "null"]
+
+    VideoAnalytics:
+      type: object
+      required: [id, videoId, title, likes, comments, shares, views, playCount]
+      properties:
+        id:
+          type: integer
+        videoId:
+          type: string
+        title:
+          type: string
+        thumbnailUrl:
+          type: ["string", "null"]
+        likes:
+          type: integer
+        comments:
+          type: integer
+        shares:
+          type: integer
+        views:
+          type: integer
+        playCount:
+          type: integer
+        engagementRate:
+          type: number
+        createdAt:
+          type: string
+
+    GrowthDataPoint:
+      type: object
+      required: [date, followers, likes, comments, shares]
+      properties:
+        date:
+          type: string
+        followers:
+          type: integer
+        likes:
+          type: integer
+        comments:
+          type: integer
+        shares:
+          type: integer
+
+    PaymentInitInput:
+      type: object
+      required: [currency]
+      properties:
+        currency:
+          type: string
+          enum: [NGN, USD]
+
+    PaymentRequest:
+      type: object
+      required: [id, status, amount, currency, createdAt]
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+          enum: [pending, proof_submitted, approved, rejected]
+        amount:
+          type: number
+        currency:
+          type: string
+        proofImageUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    PaymentProofInput:
+      type: object
+      required: [paymentId, proofImageBase64, fileName]
+      properties:
+        paymentId:
+          type: integer
+        proofImageBase64:
+          type: string
+        fileName:
+          type: string
+
+    Subscription:
+      type: object
+      required: [plan, status]
+      properties:
+        plan:
+          type: string
+          enum: [free, premium, grace]
+        status:
+          type: string
+          enum: [active, expired, grace_period, none]
+        expiresAt:
+          type: ["string", "null"]
+        daysRemaining:
+          type: ["integer", "null"]
+        latestPayment:
+          $ref: "#/components/schemas/PaymentRequest"
+
+    AiGenerateInput:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [caption, hashtags, viral_ideas, content_plan]
+        topic:
+          type: string
+        videoTitle:
+          type: string
+        niche:
+          type: string
+
+    AiGenerateResponse:
+      type: object
+      required: [result]
+      properties:
+        result:
+          type: string
+        suggestions:
+          type: array
+          items:
+            type: string
+
+    AiChatInput:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+
+    AiChatResponse:
+      type: object
+      required: [reply]
+      properties:
+        reply:
+          type: string
+
+    ChatMessage:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+
+    PushSubscriptionInput:
+      type: object
+      required: [endpoint, p256dh, auth]
+      properties:
+        endpoint:
+          type: string
+        p256dh:
+          type: string
+        auth:
+          type: string
+
+    AdminLoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    AdminAuthResult:
+      type: object
+      required: [token, admin]
+      properties:
+        token:
+          type: string
+        admin:
+          $ref: "#/components/schemas/AdminInfo"
+
+    AdminInfo:
+      type: object
+      required: [email, name]
+      properties:
+        email:
+          type: string
+        name:
+          type: string
+
+    AdminPaymentDetail:
+      type: object
+      required: [id, userId, userEmail, amount, currency, status, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        userEmail:
+          type: string
+        userName:
+          type: ["string", "null"]
+        amount:
+          type: number
+        currency:
+          type: string
+        status:
+          type: string
+        proofImageUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    AdminUserDetail:
+      type: object
+      required: [id, clerkId, email, plan, createdAt]
+      properties:
+        id:
+          type: integer
+        clerkId:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: ["string", "null"]
+        plan:
+          type: string
+        premiumExpiresAt:
+          type: ["string", "null"]
+        tiktokConnected:
+          type: boolean
+        createdAt:
+          type: string
+
+    TogglePremiumInput:
+      type: object
+      required: [premium]
+      properties:
+        premium:
+          type: boolean
+        durationDays:
+          type: integer
+
+    AdminStats:
+      type: object
+      required: [totalUsers, premiumUsers, freeUsers, pendingPayments, approvedPayments, totalRevenue]
+      properties:
+        totalUsers:
+          type: integer
+        premiumUsers:
+          type: integer
+        freeUsers:
+          type: integer
+        pendingPayments:
+          type: integer
+        approvedPayments:
+          type: integer
+        totalRevenue:
+          type: number
