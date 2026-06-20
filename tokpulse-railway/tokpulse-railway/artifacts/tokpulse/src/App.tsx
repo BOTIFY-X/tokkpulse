@@ -19,14 +19,29 @@ import Plans from "@/pages/plans";
 import Terms from "@/pages/terms";
 import Privacy from "@/pages/privacy";
 
+declare global {
+  interface Window {
+    __ENV__?: {
+      CLERK_PUBLISHABLE_KEY?: string;
+      CLERK_PROXY_URL?: string;
+    };
+  }
+}
+
 const queryClient = new QueryClient();
 
+// In production on Railway, the server injects the real key via window.__ENV__
+// at request time. During local dev, fall back to the Vite env var.
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+  window.__ENV__?.CLERK_PUBLISHABLE_KEY ?? import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
 );
 
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+const clerkProxyUrl =
+  window.__ENV__?.CLERK_PROXY_URL ??
+  import.meta.env.VITE_CLERK_PROXY_URL ??
+  undefined;
+
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function stripBase(path: string): string {
@@ -36,7 +51,7 @@ function stripBase(path: string): string {
 }
 
 if (!clerkPubKey) {
-  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY");
+  throw new Error("Missing Clerk publishable key. Set CLERK_PUBLISHABLE_KEY in Railway Variables.");
 }
 
 const clerkAppearance = {
