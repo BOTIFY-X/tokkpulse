@@ -71,7 +71,7 @@ if (process.env.NODE_ENV === "production") {
 
   // SPA fallback — send index.html for all unmatched routes so client-side
   // routing (wouter) works correctly on direct URL access / refresh.
-  app.get("*", (_req, res) => {
+  app.get("/*splat", (_req, res) => {
     res.sendFile(path.join(staticDir, "index.html"));
   });
 }
