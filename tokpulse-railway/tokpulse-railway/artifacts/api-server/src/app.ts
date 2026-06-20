@@ -1,6 +1,7 @@
 import path from "path";
+import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
@@ -38,8 +39,8 @@ app.use(
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
 // ── Healthcheck BEFORE Clerk middleware so it always returns 200 ───────────────
-// Railway and Replit both hit /api/healthz — must be reachable even if Clerk
-// secret key or DB is not configured yet (prevents deploy-blocking 500s).
+// Railway hits /api/healthz — must be reachable even if Clerk secret key or
+// DB is not configured yet (prevents deploy-blocking 500s).
 app.get("/api/healthz", (_req, res) => {
   res.json({ status: "ok" });
 });
@@ -59,20 +60,47 @@ app.use(
 
 app.use("/api", router);
 
-// ── Production static file serving (Railway / deployed builds) ────────────────
-// On Replit, NODE_ENV=development and the Vite dev server handles the frontend.
-// In a deployed container (NODE_ENV=production), Express serves the pre-built
-// Vite SPA that was copied into dist/public during the Docker build.
+// ── Production static file serving (Railway deployed builds) ──────────────────
+// Express serves the pre-built Vite SPA that was copied into dist/public during
+// the Docker build. index.html is served specially so we can inject runtime env
+// vars (CLERK_PUBLISHABLE_KEY, etc.) that are known only at container start time
+// — NOT at Docker build time when Vite compiled the JS bundle.
 if (process.env.NODE_ENV === "production") {
   const __dirnameProd = path.dirname(fileURLToPath(import.meta.url));
   const staticDir = path.join(__dirnameProd, "public");
 
-  app.use(express.static(staticDir));
+  // Cache the template once at startup — placeholders get replaced per-request.
+  const indexHtmlTemplate = readFileSync(path.join(staticDir, "index.html"), "utf-8");
 
-  // SPA fallback — send index.html for all unmatched routes so client-side
-  // routing (wouter) works correctly on direct URL access / refresh.
-  app.get("/*splat", (_req, res) => {
-    res.sendFile(path.join(staticDir, "index.html"));
+  // Serve all static assets (JS/CSS/images) directly — skip index.html here.
+  app.use(express.static(staticDir, { index: false }));
+
+  // For every HTML navigation request, inject runtime env vars and serve the SPA.
+  app.get("/*splat", (req: Request, res: Response) => {
+    const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY ?? "";
+
+    // Compute the Clerk proxy URL from the incoming request so it matches the
+    // domain Railway actually assigned — this can't be known at build time.
+    const protocol = (
+      Array.isArray(req.headers["x-forwarded-proto"])
+        ? req.headers["x-forwarded-proto"][0]
+        : req.headers["x-forwarded-proto"]
+    ) ?? "https";
+    const rawHost = (
+      Array.isArray(req.headers["x-forwarded-host"])
+        ? req.headers["x-forwarded-host"][0]
+        : req.headers["x-forwarded-host"]
+    ) ?? req.headers.host ?? "";
+    const host = rawHost.toString().split(",")[0].trim();
+    const clerkProxyUrl = `${protocol}://${host}${CLERK_PROXY_PATH}`;
+
+    const html = indexHtmlTemplate
+      .replace("%%CLERK_PUBLISHABLE_KEY%%", clerkPublishableKey)
+      .replace("%%CLERK_PROXY_URL%%", clerkProxyUrl);
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    res.send(html);
   });
 }
 
