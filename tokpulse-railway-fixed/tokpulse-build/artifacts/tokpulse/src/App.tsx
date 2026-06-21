@@ -21,35 +21,31 @@ import Privacy from "@/pages/privacy";
 
 const queryClient = new QueryClient();
 
-// Runtime env injection: index.html sets window.__ENV__ via Express template replacement.
-// Falls back to VITE build-time env for local dev.
-const runtimeEnv = (window as any).__ENV__ ?? {};
+// Read Clerk key at RUNTIME from window.__ENV__ (injected by Express).
+// Falls back to Vite build-time env for local dev.
+declare global { interface Window { __ENV__?: Record<string, string>; } }
 
 function getRuntimeEnv(key: string): string {
-  const val = runtimeEnv[key];
-  // If it's still a template placeholder (Express didn't replace it), fall back
-  if (!val || val.startsWith("%%")) return import.meta.env[key] ?? "";
+  const val = window.__ENV__?.[key];
+  // Still a placeholder? → fall back to Vite build-time value
+  if (!val || val.startsWith("%%")) return (import.meta.env[key] as string) ?? "";
   return val;
 }
 
 const rawClerkKey = getRuntimeEnv("VITE_CLERK_PUBLISHABLE_KEY");
-
-const clerkPubKey = publishableKeyFromHost(
-  window.location.hostname,
-  rawClerkKey,
-);
-
 const clerkProxyUrl = getRuntimeEnv("VITE_CLERK_PROXY_URL") || undefined;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-function stripBase(path: string): string {
-  return basePath && path.startsWith(basePath)
-    ? path.slice(basePath.length) || "/"
-    : path;
+const clerkPubKey = publishableKeyFromHost(window.location.hostname, rawClerkKey);
+
+function stripBase(p: string): string {
+  return basePath && p.startsWith(basePath) ? p.slice(basePath.length) || "/" : p;
 }
 
 if (!clerkPubKey) {
-  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY — set it in Railway Variables");
+  throw new Error(
+    "Missing CLERK_PUBLISHABLE_KEY — add it in Railway Variables dashboard."
+  );
 }
 
 const clerkAppearance = {
@@ -107,13 +103,10 @@ function ClerkQueryClientCacheInvalidator() {
   const { addListener } = useClerk();
   const qc = useQueryClient();
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
-
   useEffect(() => {
     const unsubscribe = addListener(({ user }) => {
       const userId = user?.id ?? null;
-      if (prevUserIdRef.current !== undefined && prevUserIdRef.current !== userId) {
-        qc.clear();
-      }
+      if (prevUserIdRef.current !== undefined && prevUserIdRef.current !== userId) qc.clear();
       prevUserIdRef.current = userId;
     });
     return unsubscribe;
@@ -124,12 +117,8 @@ function ClerkQueryClientCacheInvalidator() {
 function HomeRedirect() {
   return (
     <>
-      <Show when="signed-in">
-        <Dashboard />
-      </Show>
-      <Show when="signed-out">
-        <Landing />
-      </Show>
+      <Show when="signed-in"><Dashboard /></Show>
+      <Show when="signed-out"><Landing /></Show>
     </>
   );
 }
@@ -137,9 +126,7 @@ function HomeRedirect() {
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   return (
     <>
-      <Show when="signed-in">
-        <Component />
-      </Show>
+      <Show when="signed-in"><Component /></Show>
       <Show when="signed-out">
         <div className="flex min-h-screen items-center justify-center">
           <div className="text-center">
@@ -156,7 +143,6 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
-
   return (
     <ClerkProvider
       publishableKey={clerkPubKey}
