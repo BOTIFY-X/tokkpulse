@@ -9,14 +9,13 @@
     <meta property="og:title" content="TokPulse" />
     <meta property="og:description" content="TikTok analytics and AI content tools for Nigerian creators." />
     <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="TokPulse" />
-    <meta name="twitter:description" content="TikTok analytics and AI content tools for Nigerian creators." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script>
+      // Express replaces %%…%% placeholders at request time with real Railway Variables.
+      // This way CLERK_PUBLISHABLE_KEY is NEVER baked into the Docker image.
       window.__ENV__ = {
         VITE_CLERK_PUBLISHABLE_KEY: "%%CLERK_PUBLISHABLE_KEY%%",
         VITE_CLERK_PROXY_URL: "%%CLERK_PROXY_URL%%"

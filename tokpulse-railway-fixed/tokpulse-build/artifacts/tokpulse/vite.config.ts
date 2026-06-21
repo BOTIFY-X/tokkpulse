@@ -3,9 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
-const rawPort = process.env.PORT ?? "8080";
-const port = Number(rawPort);
-
+const port = Number(process.env.PORT ?? "8080");
 const basePath = process.env.BASE_PATH ?? "/";
 
 export default defineConfig({
@@ -13,7 +11,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    // Replit-only plugins: only load when running inside Replit (REPL_ID is set)
+    // Replit-specific plugins — only loaded inside Replit (REPL_ID is defined)
     ...(process.env.NODE_ENV !== "production" && process.env.REPL_ID !== undefined
       ? [
           await import("@replit/vite-plugin-runtime-error-modal").then((m) => m.default()),
@@ -41,9 +39,7 @@ export default defineConfig({
     strictPort: true,
     host: "0.0.0.0",
     allowedHosts: true,
-    fs: {
-      strict: true,
-    },
+    fs: { strict: true },
   },
   preview: {
     port: Number.isNaN(port) || port <= 0 ? 8080 : port,
